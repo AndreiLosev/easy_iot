@@ -1,4 +1,4 @@
-mod RequestTypes;
+mod request_types;
 
 use std::str::FromStr;
 use std::{io, time::Duration, net};
@@ -9,7 +9,7 @@ use rmodbus::{
     ModbusProto,
 };
 
-use RequestTypes::{ReadRequest, MRequestValues, WriteRequest, MultipleWriteRequest};
+use request_types::{ReadRequest, MRequestValues, WriteRequest, MultipleWriteRequest};
 
 struct ModbusDriver {
     transport: net::TcpStream,
