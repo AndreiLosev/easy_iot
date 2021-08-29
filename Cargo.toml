@@ -1,0 +1,10 @@
+[package]
+name = "tcp_modbus"
+version = "0.1.0"
+authors = ["andrei <losev_andrei@bk.ru>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rmodbus = "0.5.3"

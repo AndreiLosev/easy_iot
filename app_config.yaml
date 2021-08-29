@@ -1,0 +1,82 @@
+{
+    arhive_delay_s: 600,
+    control_delay_s: 60,
+    storage_key: 'firebase_api_key',
+    protocols: [
+        {ModbusRtu: [
+            {
+                port_name: /dev/ttyS1,
+                baud_rate: 115200,
+                data_bits: 8,
+                stop_bits: 1,
+                parity: None,
+                devises: [
+                    {
+                        addr: 1,
+                        vars: {
+                            coils: {'On': 1, 'off': 2, 'alarms': 3},
+                            discrete_inputs: {},
+                            inputs_registers: {},
+                            holding_registers: {'currentT': [1, 1], 'setT': [2, 1]},
+                        }
+                    },
+                    {
+                        addr: 2,
+                        vars: {
+                            coils: {'On': 1, 'off': 2, 'alarms': 3},
+                            discrete_inputs: {},
+                            inputs_registers: {},
+                            holding_registers: {'currentT': [1, 1], 'setT': [2, 1]},
+                        }
+                    },
+                ],
+            },
+            {
+                port_name: /dev/ttyS2,
+                baud_rate: 9600,
+                data_bits: 7,
+                stop_bits: 2,
+                parity: Even,
+                devises: [
+                    {
+                        addr: 2,
+                        vars: {
+                            coils: {'On': 1, 'off': 2, 'alarms': 3},
+                            discrete_inputs: {},
+                            inputs_registers: {},
+                            holding_registers: {'currentT': [1, 1], 'setT': [2, 1]},
+                        }
+                    },
+                ],
+            }
+        ]},
+        {ModbusUdp: []},
+        {ModbusTcp: [
+            {
+                port_name: enp2s0,
+                devises: [
+                    {
+                        ip_addr: '127.0.0.2:5020',
+                        id_addr: 1,
+                        vars: {
+                            coils: {'On': 1, 'off': 2, 'alarms': 3},
+                            discrete_inputs: {},
+                            inputs_registers: {},
+                            holding_registers: {'currentT': [1, 1], 'setT': [2, 1]},
+                        }
+                    },
+                    {
+                        ip_addr: '127.0.0.3:5020',
+                        id_addr: 1,
+                        vars: {
+                            coils: {'On': 1, 'off': 2, 'alarms': 3},
+                            discrete_inputs: {},
+                            inputs_registers: {},
+                            holding_registers: {'currentT': [1, 1], 'setT': [2, 1]},
+                        }
+                    },
+                ],
+            }
+        ]},
+    ],
+}
