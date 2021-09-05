@@ -1,20 +1,19 @@
 mod request_types;
+mod error_kind;
 
-use std::str::FromStr;
-use std::{io, time::Duration, net};
-use std::io::prelude::*;
+use rmodbus::ErrorKind;
+use serial;
+use std::net;
+use std::io::{Read, Write};
 use rmodbus::{
     client::ModbusRequest,
     guess_response_frame_len,
     ModbusProto,
 };
+use std::any;
 
 use request_types::{ReadRequest, MRequestValues, WriteRequest, MultipleWriteRequest};
-
-struct ModbusDriver {
-    transport: net::TcpStream,
-    m_request: ModbusRequest,
-}
+use error_kind::ModbusErrKind;
 
 enum ModbusFunc {
     ReadCoilds(ReadRequest),
@@ -27,43 +26,32 @@ enum ModbusFunc {
     WriteMultipleHoldingRegisters(MultipleWriteRequest),
 }
 
-#[derive(Debug)]
-enum ModbusErrKind {
-    Io(io::Error),
-    Net(net::AddrParseError),
-    Rmodbus(rmodbus::ErrorKind),
+trait MBNetworks: Write + Read {}
+
+impl MBNetworks for net::TcpStream {}
+
+impl MBNetworks for serial::SystemPort {}
+
+
+struct ModbusDriver<T: 'static> {
+    transport: T,
+    m_request: ModbusRequest,
+    proto: ModbusProto,
 }
 
-impl From<io::Error> for ModbusErrKind {
-    fn from(err: io::Error) -> ModbusErrKind {
-        ModbusErrKind::Io(err)
-    }
-}
+impl<T: MBNetworks> ModbusDriver<T> {
+    fn new(transport: T) -> Result<Self, ModbusErrKind> {
 
-impl From<net::AddrParseError> for ModbusErrKind {
-    fn from(err: net::AddrParseError) -> ModbusErrKind {
-        ModbusErrKind::Net(err)
-    }
-}
+        let proto = if any::TypeId::of::<T>() == any::TypeId::of::<net::TcpStream>() {
+            Ok(ModbusProto::TcpUdp)
+        } else if any::TypeId::of::<T>() == any::TypeId::of::<serial::SystemPort>() {
+            Ok(ModbusProto::Rtu)
+        } else {
+            Err(ModbusErrKind::Rmodbus(ErrorKind::Acknowledge)) // TODO
+        }?;
 
-impl From<rmodbus::ErrorKind> for ModbusErrKind {
-    fn from(err: rmodbus::ErrorKind) -> ModbusErrKind {
-        ModbusErrKind::Rmodbus(err)
-    }
-}
-
-impl ModbusDriver {
-    fn new(host: &str, port: u16, timeout: u64) -> Result<Self, ModbusErrKind> {
-
-        let soket_addr =  net::SocketAddr::from((
-            net::IpAddr::from_str(host)?,
-            port,
-        ));
-        let transport = net::TcpStream::connect(soket_addr)?;
-        transport.set_read_timeout(Some(Duration::from_millis(timeout)))?;
-        transport.set_write_timeout(Some(Duration::from_millis(timeout)))?;
-        let m_request = ModbusRequest::new(1, ModbusProto::TcpUdp);
-        return Ok(Self { transport, m_request });
+        let m_request = ModbusRequest::new(1, proto);
+        return Ok(Self {transport, m_request, proto});
     }
 
     fn read_coils(&mut self, req_data: ReadRequest) -> Result<Vec<bool>, ModbusErrKind> {
@@ -170,13 +158,13 @@ impl ModbusDriver {
     fn networking(&mut self, func_type: &mut ModbusFunc) -> Result<Vec<u8>, ModbusErrKind> {
         let buff = self.generate_request(func_type)?;
         self.transport.write(&buff)?;
-        let mut buf = [0u8; 7];
+        let mut buf = [0u8; 6];
         self.transport.read_exact(&mut buf)?;
         let mut response: Vec<u8> = Vec::new();
         response.extend_from_slice(&buf);
-        let len = guess_response_frame_len(&buf, ModbusProto::TcpUdp)?;
-        if len > 7 {
-            let mut rest = vec![0u8; (len - 7) as usize];
+        let len = guess_response_frame_len(&buf, self.proto)?;
+        if len > 6 {
+            let mut rest = vec![0u8; (len - 6) as usize];
             self.transport.read_exact(&mut rest)?;
             response.extend(rest);
         };
@@ -185,15 +173,14 @@ impl ModbusDriver {
 }
 
 fn main() {
-
-    let mut x = ModbusDriver::new("127.0.0.1", 5020, 1000).unwrap();
-
+    // let transport = serial::open("/dev/pts/3").unwrap();
+    let transport = net::TcpStream::connect("127.0.0.1:5020").unwrap();
+    let mut x = ModbusDriver::new(transport).unwrap();
     let qwe = ReadRequest{
         start: 3,
         count: 4,
         buffer: Vec::with_capacity(8),
     };
-
     let ewq = WriteRequest{
         start: 3,
         value: MRequestValues::Coil(true),
