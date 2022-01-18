@@ -1,6 +1,6 @@
 mod protocols;
 
-use std::net;
+use serial;
 use protocols::modbus::driver::ModbusDriver;
 use protocols::modbus::request_types::ReadRequest;
 use protocols::modbus::request_types::WriteRequest;
@@ -8,8 +8,8 @@ use protocols::modbus::request_types::MultipleWriteRequest;
 use protocols::modbus::request_types::MRequestValues;
 
 fn main() {
-    // let transport = serial::open("/dev/pts/3").unwrap();
-    let transport = net::TcpStream::connect("127.0.0.1:5020").unwrap();
+    let transport = serial::open("/dev/pts/3").unwrap();
+    // let transport = net::TcpStream::connect("127.0.0.1:5020").unwrap();
     let mut x = ModbusDriver::new(transport).unwrap();
     let qwe = ReadRequest{
         start: 3,
